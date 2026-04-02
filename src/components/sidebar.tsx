@@ -10,8 +10,13 @@ import {
   Users,
   ChevronRight,
   Plus,
+  CheckSquare,
+  Rocket,
+  GitBranch,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { RealtimeNotifications } from './realtime-notifications';
 
 interface SidebarItem {
   label: string;
@@ -23,6 +28,10 @@ const mainNav: SidebarItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Workspaces', href: '/workspaces', icon: FolderKanban },
   { label: 'Drawing Board', href: '/drawing-board', icon: PenTool },
+  { label: 'Tasks', href: '/tasks', icon: CheckSquare },
+  { label: 'Deployments', href: '/deployments', icon: Rocket },
+  { label: 'Git', href: '/git', icon: GitBranch },
+  { label: 'Approvals', href: '/approvals', icon: FileText },
 ];
 
 const bottomNav: SidebarItem[] = [
@@ -83,12 +92,13 @@ export function Sidebar({ workspaceName, projectName }: SidebarProps) {
         </div>
       )}
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        <div className="mb-4">
-          <button className="flex w-full items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        <div className="mb-4 flex items-center justify-between">
+          <button className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700">
             <Plus className="h-4 w-4" />
             New Project
           </button>
+          <RealtimeNotifications />
         </div>
 
         <div className="space-y-1">
