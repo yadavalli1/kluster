@@ -1,0 +1,287 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Workspace {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  projects     Project[]
+  secrets      Secret[]
+  aiSettings   AISettings?
+  deploymentTargets DeploymentTarget[]
+  members      WorkspaceMember[]
+
+  @@index([slug])
+  @@index([deletedAt])
+}
+
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  workspaceId String
+  userId      String   // Clerk user ID
+  role        WorkspaceRole @default(MEMBER)
+  joinedAt    DateTime @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([workspaceId])
+  @@index([userId])
+}
+
+model Project {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  name          String
+  slug          String
+  description   String?
+  gitProvider   String? // 'github', 'self-hosted'
+  gitRepoUrl    String?
+  status        ProjectStatus @default(DRAFT)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  // Relations
+  workspace     Workspace     @relation(fields: [workspaceId], references: [id])
+  drawingBoard  DrawingBoard?
+  plans         Plan[]
+  tasks         Task[]
+  deployments   Deployment[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model DrawingBoard {
+  id              String   @id @default(cuid())
+  projectId       String   @unique
+  what            String?  @db.Text // What are you building
+  why             String?  @db.Text // Business use case
+  successCriteria Json?    // Array of criteria
+  clarifications  Json?    // Q&A from questionnaire
+  status          DrawingBoardStatus @default(DRAFT)
+  mode            DrawingBoardMode @default(CONVERSATIONAL)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  files           DrawingBoardFile[]
+  conversation    ConversationMessage[]
+
+  @@index([projectId])
+}
+
+model DrawingBoardFile {
+  id              String   @id @default(cuid())
+  drawingBoardId  String
+  name            String
+  url             String
+  type            String   // 'image', 'document', 'diagram'
+  createdAt       DateTime @default(now())
+
+  drawingBoard    DrawingBoard @relation(fields: [drawingBoardId], references: [id], onDelete: Cascade)
+
+  @@index([drawingBoardId])
+}
+
+model ConversationMessage {
+  id              String   @id @default(cuid())
+  drawingBoardId  String
+  role            String   // 'user', 'assistant', 'system'
+  content         String   @db.Text
+  metadata        Json?    // suggestions, actions, etc.
+  createdAt       DateTime @default(now())
+
+  drawingBoard    DrawingBoard @relation(fields: [drawingBoardId], references: [id], onDelete: Cascade)
+
+  @@index([drawingBoardId])
+  @@index([createdAt])
+}
+
+model Plan {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  version     Int      @default(1)
+  status      PlanStatus @default(DRAFT)
+  content     Json     // The full plan structure
+  generatedBy String? // AI model used
+  approvedBy  String?  // User ID
+  approvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  projectId   String
+  planId      String?
+  title       String
+  description String?  @db.Text
+  status      TaskStatus @default(PENDING)
+  priority    TaskPriority @default(MEDIUM)
+  dependencies String[] // Array of task IDs
+  assignedTo  String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  gitBranch   String?  // Branch name for this task
+  gitCommit   String?  // Commit hash after completion
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([status])
+  @@index([planId])
+}
+
+model Deployment {
+  id          String   @id @default(cuid())
+  projectId   String
+  targetId    String
+  status      DeploymentStatus @default(PENDING)
+  version     String
+  logs        String?  @db.Text
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  target      DeploymentTarget @relation(fields: [targetId], references: [id])
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model DeploymentTarget {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  type        String   // 'kubernetes', 'aws-ecs', 'aws-app-runner', 'local'
+  config      Json     // Target-specific configuration
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  deployments Deployment[]
+
+  @@index([workspaceId])
+}
+
+model Secret {
+  id          String   @id @default(cuid())
+  workspaceId String
+  name        String
+  value       String   // Encrypted
+  scope       SecretScope @default(WORKSPACE)
+  projectId   String?  // If project-scoped
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, name, scope, projectId])
+  @@index([workspaceId])
+}
+
+model AISettings {
+  id          String   @id @default(cuid())
+  workspaceId String   @unique
+  provider    String   @default('openai') // 'openai', 'anthropic', 'custom'
+  model       String   @default('gpt-4-turbo-preview')
+  apiKey      String?  // Encrypted
+  endpoint    String?  // For custom providers
+  temperature Float    @default(0.7)
+  maxTokens   Int      @default(4096)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum ProjectStatus {
+  DRAFT
+  PLANNING
+  BUILDING
+  COMPLETED
+  ARCHIVED
+}
+
+enum DrawingBoardStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  GENERATING
+}
+
+enum DrawingBoardMode {
+  CONVERSATIONAL
+  STRUCTURED
+  DOCUMENT
+}
+
+enum PlanStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  BLOCKED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum DeploymentStatus {
+  PENDING
+  APPROVAL_REQUIRED
+  BUILDING
+  DEPLOYING
+  SUCCESS
+  FAILED
+  ROLLED_BACK
+}
+
+enum SecretScope {
+  WORKSPACE
+  PROJECT
+}
