@@ -1,7 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { Sidebar } from '@/components/sidebar';
-import { GitBranch, GitCommit, Github, Plus, RefreshCw, ExternalLink } from 'lucide-react';
+import { GitBranch, GitCommit, ExternalLink, Plus, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 
 const sampleCommits = [
@@ -58,7 +58,7 @@ export default async function GitIntegrationPage() {
               <div className="rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
                 <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
                   <div className="flex items-center gap-3">
-                    <Github className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
+                    <GitBranch className="h-5 w-5 text-zinc-600 dark:text-zinc-400" />
                     <span className="font-medium text-zinc-900 dark:text-zinc-100">Commit History</span>
                   </div>
                   <span className="text-sm text-zinc-500">{sampleCommits.length} commits</span>
