@@ -2,6 +2,21 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 
+export async function GET() {
+  const { userId } = await auth();
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const memberships = await prisma.workspaceMember.findMany({
+    where: { userId },
+    include: { workspace: true },
+  });
+
+  const workspaces = memberships.map((m) => m.workspace);
+  return NextResponse.json(workspaces);
+}
+
 export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) {
