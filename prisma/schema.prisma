@@ -1,10 +1,10 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Workspace {
@@ -209,8 +209,8 @@ model Secret {
 model AISettings {
   id          String   @id @default(cuid())
   workspaceId String   @unique
-  provider    String   @default('openai') // 'openai', 'anthropic', 'custom'
-  model       String   @default('gpt-4-turbo-preview')
+  provider    String   @default("openai") // 'openai', 'anthropic', 'custom'
+  model       String   @default("gpt-4-turbo-preview")
   apiKey      String?  // Encrypted
   endpoint    String?  // For custom providers
   temperature Float    @default(0.7)
