@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Sidebar } from '@/components/sidebar';
-import { ArrowLeft, Key, Eye, EyeOff, Check } from 'lucide-react';
+import { ArrowLeft, Key, Eye, EyeOff, Check, FlaskConical, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 interface Workspace {
@@ -45,6 +45,10 @@ export default function AISettingsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ valid: boolean; error?: string } | null>(null);
+  const [discoveredModels, setDiscoveredModels] = useState<{ id: string; name: string }[]>([]);
+  const [useDiscovered, setUseDiscovered] = useState(false);
 
   useEffect(() => {
     fetch('/api/workspaces')
@@ -81,6 +85,39 @@ export default function AISettingsPage() {
       setModel(p.models[0]);
     } else {
       setModel('');
+    }
+    setTestResult(null);
+    setDiscoveredModels([]);
+    setUseDiscovered(false);
+  }
+
+  async function handleTestKey() {
+    if (!apiKey) return;
+    setTesting(true);
+    setTestResult(null);
+    setDiscoveredModels([]);
+
+    try {
+      const res = await fetch('/api/ai-settings/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, apiKey, endpoint: provider === 'custom' ? endpoint : undefined }),
+      });
+
+      const data = await res.json();
+      setTestResult({ valid: data.valid, error: data.error });
+
+      if (data.valid && data.models?.length > 0) {
+        setDiscoveredModels(data.models);
+        setUseDiscovered(true);
+        if (!data.models.find((m: { id: string }) => m.id === model)) {
+          setModel(data.models[0].id);
+        }
+      }
+    } catch {
+      setTestResult({ valid: false, error: 'Failed to test key' });
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -199,19 +236,56 @@ export default function AISettingsPage() {
             <div>
               <label htmlFor="model" className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
                 Model
+                {useDiscovered && discoveredModels.length > 0 && (
+                  <span className="ml-2 inline-flex items-center gap-1 text-xs text-indigo-600 dark:text-indigo-400">
+                    <Sparkles className="h-3 w-3" /> From your account
+                  </span>
+                )}
               </label>
-              {currentProvider.models.length > 0 ? (
-                <select
-                  id="model"
-                  required
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-                >
-                  {currentProvider.models.map((m) => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
+              {useDiscovered && discoveredModels.length > 0 ? (
+                <>
+                  <select
+                    id="model"
+                    required
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    className="mt-1 block w-full rounded-lg border border-indigo-300 bg-indigo-50/50 px-3 py-2 text-sm text-zinc-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-indigo-700 dark:bg-indigo-950/30 dark:text-zinc-100"
+                  >
+                    {discoveredModels.map((m) => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setUseDiscovered(false)}
+                    className="mt-1 text-xs text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+                  >
+                    Use default model list instead
+                  </button>
+                </>
+              ) : currentProvider.models.length > 0 ? (
+                <>
+                  <select
+                    id="model"
+                    required
+                    value={model}
+                    onChange={(e) => setModel(e.target.value)}
+                    className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                  >
+                    {currentProvider.models.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  {discoveredModels.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setUseDiscovered(true)}
+                      className="mt-1 text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                    >
+                      Show {discoveredModels.length} models from your account
+                    </button>
+                  )}
+                </>
               ) : (
                 <input
                   id="model"
@@ -228,9 +302,19 @@ export default function AISettingsPage() {
             <div>
               <label htmlFor="apiKey" className="block text-sm font-medium text-zinc-900 dark:text-zinc-100">
                 API Key
-                {hasExistingKey && (
+                {hasExistingKey && !testResult && (
                   <span className="ml-2 inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                     <Check className="h-3 w-3" /> Key configured
+                  </span>
+                )}
+                {testResult?.valid && (
+                  <span className="ml-2 inline-flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                    <Check className="h-3 w-3" /> Valid key
+                  </span>
+                )}
+                {testResult && !testResult.valid && (
+                  <span className="ml-2 inline-flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+                    <AlertCircle className="h-3 w-3" /> Invalid
                   </span>
                 )}
               </label>
@@ -239,7 +323,7 @@ export default function AISettingsPage() {
                   id="apiKey"
                   type={showKey ? 'text' : 'password'}
                   value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
+                  onChange={(e) => { setApiKey(e.target.value); setTestResult(null); setDiscoveredModels([]); setUseDiscovered(false); }}
                   placeholder={hasExistingKey ? '••••••••  (leave blank to keep current)' : currentProvider.placeholder}
                   className="block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 pr-10 text-sm text-zinc-900 placeholder-zinc-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-500"
                 />
@@ -251,6 +335,25 @@ export default function AISettingsPage() {
                   {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleTestKey}
+                  disabled={!apiKey || testing}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                >
+                  {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <FlaskConical className="h-3 w-3" />}
+                  {testing ? 'Testing...' : 'Test Key & Discover Models'}
+                </button>
+              </div>
+              {testResult && !testResult.valid && testResult.error && (
+                <p className="mt-2 text-xs text-red-600 dark:text-red-400">{testResult.error}</p>
+              )}
+              {testResult?.valid && discoveredModels.length > 0 && (
+                <p className="mt-2 text-xs text-green-600 dark:text-green-400">
+                  Found {discoveredModels.length} available model{discoveredModels.length !== 1 ? 's' : ''}
+                </p>
+              )}
             </div>
 
             {provider === 'custom' && (
