@@ -13,14 +13,14 @@
     "@clerk/nextjs": "^7.2.4",
     "@monaco-editor/react": "^4.7.0",
     "@octokit/rest": "^22.0.1",
-    "@prisma/adapter-pg": "^7.6.0",
-    "@prisma/client": "^7.6.0",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
     "@supabase/supabase-js": "^2.101.1",
     "ai": "^6.0.143",
     "clsx": "^2.1.1",
     "lucide-react": "^1.7.0",
-    "next": "16.2.11",
-    "prisma": "^7.6.0",
+    "next": "16.4.6",
+    "prisma": "^7.10.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",
@@ -36,19 +36,19 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.11",
+    "eslint-config-next": "16.4.6",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
   "overrides": {
     "@babel/core": "^7.29.6",
-    "postcss": "^8.5.10",
-    "dompurify": "^3.4.11",
+    "postcss": "^8.5.23",
+    "dompurify": "^3.4.17",
     "js-cookie": "^3.0.7",
-    "brace-expansion": "^1.1.16",
+    "brace-expansion": "^1.1.21",
     "find-my-way": "^9.7.0",
     "@typescript-eslint/typescript-estree": {
-      "brace-expansion": "^5.0.7"
+      "brace-expansion": "^5.0.12"
     }
   }
 }
